@@ -10,18 +10,26 @@ El estudiante diseñará e implementará un script en Python que procese de form
 Para auditar el comportamiento del sistema a medida que aumentamos el peso del estudiante foráneo ($W_f$ de 1.0 a 10.0), el script deberá calcular y graficar simultáneamente dos dimensiones independientes:
 
 ### 1. El Bienestar General del Sistema ($U_{total}$)
-Es la función de utilidad global que balancea las restricciones logísticas. Su diseño computacional debe:
-* **Premiar la inclusión:** Otorgar un valor positivo base (+1.0) si el bloque coincide con la disponibilidad del alumno (**"Puedo" / `v_p`**).
-* **Penalizar severamente la exclusión:** Aplicar un castigo numérico drástico (-1.5) si el bloque seleccionado deja por completo a un estudiante sin posibilidad de asistir, impidiéndole cursar la materia.
-* **Ponderar por vulnerabilidad:** Multiplicar estos valores por el peso correspondiente ($1.0$ para locales, $W_f$ dinámico para foráneos).
+Es la función de utilidad global que balancea las restricciones logísticas de la sección mediante un modelo de optimización lineal condicional. Su ecuación matemática formal para un bloque horario específico $b$ está definida por:
+
+$$U_{total}(b) = \sum_{i=1}^{N} \omega_i \cdot \Big[ \mathbb{I}(b \in v_{p,i}) \cdot \big(1.0 + 0.5 \cdot \mathbb{I}(b \in v_{d,i})\big) - 1.5 \cdot \mathbb{I}(b \notin v_{p,i}) \Big]$$
+
+**Donde el vector de pesos políticos ($\omega_i$) se define dinámicamente como:**
+$$\omega_i = \begin{cases} 1.0 & \text{si el estudiante } i \text{ es Local } (f_i = \text{False}) \\ W_f & \text{si el estudiante } i \text{ es Foráneo } (f_i = \text{True}) \end{cases}$$
+
+**Y las funciones indicadoras $\mathbb{I}(\text{condición})$ operan de la siguiente manera:**
+* $\mathbb{I}(b \in v_{p,i}) = 1$ si el bloque está en su disponibilidad (**"Puedo"**), otorgando $+1.0$ punto.
+* $\mathbb{I}(b \in v_{d,i}) = 1$ si el bloque coincide además con su preferencia (**"Quiero"**), otorgando un bono adicional de $+0.5$ puntos.
+* $\mathbb{I}(b \notin v_{p,i}) = 1$ si el bloque **no** está en su disponibilidad, aplicando una penalización drástica de $-1.5$ puntos por exclusión del sistema.
+
+---
 
 ### 2. El Índice de Satisfacción Neta Preferencial ($ISN$)
-Representa el "Nivel de Confort" real de los estudiantes que el algoritmo logra incorporar en el horario. Su fórmula matemática formal es:
+Representa el "Nivel de Confort" real de la subpoblación de estudiantes que el algoritmo logra incorporar de forma efectiva en el horario seleccionado. Su fórmula matemática formal es:
 
-$$ISN = \frac{\text{Alumnos en su bloque IDEAL (Quiero)}}{\text{Total de Alumnos INCLUIDOS (Puedo)}} \times 100\%$$
+$$ISN(b) = \frac{\sum_{i=1}^{N} \mathbb{I}(b \in v_{p,i} \land b \in v_{d,i})}{\sum_{i=1}^{N} \mathbb{I}(b \in v_{p,i})} \times 100\%$$
 
 *Esta métrica aísla el vector **"Quiero" (`v_d`)** para responder con rigor analítico a la siguiente premisa de la teoría de decisiones: "Lograr que un estudiante asista a clase (disponibilidad) no significa que las condiciones de su entorno sean satisfactorias (preferencia)".*
-
 ---
 
 ## 🛠️ Especificaciones Técnicas del Script
