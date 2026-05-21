@@ -1,36 +1,36 @@
 # Asignación 1: Optimización de Recursos Colectivos y Consenso Social 🏛️📊
 
 ## 🎯 Objetivo del Proyecto
-El estudiante diseñará e implementará un script en Python que procese de forma automatizada los tokens de disponibilidad generados por la sección en WhatsApp. El núcleo del reto consiste en utilizar una **Métrica Juez** basada en el **Ratio de Sacrificio ($S$)** para determinar matemáticamente el **Peso Ideal ($W_f$)** de influencia que se le debe otorgar a un estudiante foráneo para equilibrar de forma "justa" el sistema, protegiendo a la minoría vulnerable sin destruir el bienestar de la mayoría local.
+El estudiante diseñará e implementará un script en Python que procese de forma automatizada los tokens de disponibilidad generados por la sección en WhatsApp. El núcleo del reto consiste en evaluar el comportamiento del sistema mediante un enfoque bicriterio, utilizando dos métricas juezas concurrentes para determinar matemáticamente el **Peso Ideal ($W_f$)** de influencia que se le debe otorgar a un estudiante foráneo. El fin es equilibrar de forma "justa" el sistema, protegiendo a la minoría vulnerable sin destruir la satisfacción de la mayoría local.
 
 ---
 
-## ⚖️ La Métrica Juez: Ratio de Sacrificio ($S$)
-Para evaluar qué tan "justo" o equilibrado es un horario a medida que aumentamos el peso del estudiante foráneo, utilizaremos formalmente la siguiente ecuación:
+## ⚖️ Las Dos Métricas Juezas de Evaluación
 
-$$S = \frac{\text{Locales Excluidos}}{\text{Foráneos Incluidos}}$$
+Para auditar el comportamiento del sistema a medida que aumentamos el peso del estudiante foráneo ($W_f$ de 1.0 a 10.0), el script deberá calcular y graficar simultáneamente dos dimensiones independientes:
 
-### 🔍 Interpretación del Ratio:
-* **Si $S < 1$:** El sistema es eficiente. Al aumentar el peso, logramos incluir a estudiantes foráneos sacrificando a menos estudiantes locales en el proceso.
-* **Si $S = 1$:** Es el **Punto de Inflexión Crítico**. El costo de inclusión es exactamente equivalente al costo de exclusión.
-* **Si $S > 1$:** El sistema entra en desequilibrio perjudicial. El algoritmo está excluyendo a demasiados estudiantes locales solo para forzar la entrada de un foráneo (Tiranía del Outlier).
+### 1. El Bienestar General del Sistema ($U_{total}$)
+Es la función de utilidad global que balancea las restricciones logísticas. Su diseño computacional debe:
+* **Premiar la inclusión:** Otorgar un valor positivo base (+1.0) si el bloque coincide con la disponibilidad del alumno (**"Puedo" / `v_p`**).
+* **Penalizar severamente la exclusión:** Aplicar un castigo numérico drástico (-1.5) si el bloque seleccionado deja por completo a un estudiante sin posibilidad de asistir, impidiéndole cursar la materia.
+* **Ponderar por vulnerabilidad:** Multiplicar estos valores por el peso correspondiente ($1.0$ para locales, $W_f$ dinámico para foráneos).
 
-El **Peso Ideal ($W_i$)** a reportar será el valor máximo en el que el sistema logre el mayor equilibrio antes de que el Ratio de Sacrificio colapse o supere la unidad de forma irreversible.
+### 2. El Índice de Satisfacción Neta Preferencial ($ISN$)
+Representa el "Nivel de Confort" real de los estudiantes que el algoritmo logra incorporar en el horario. Su fórmula matemática formal es:
+
+$$ISN = \frac{\text{Alumnos en su bloque IDEAL (Quiero)}}{\text{Total de Alumnos INCLUIDOS (Puedo)}} \times 100\%$$
+
+*Esta métrica aísla el vector **"Quiero" (`v_d`)** para responder con rigor analítico a la siguiente premisa de la teoría de decisiones: "Lograr que un estudiante asista a clase (disponibilidad) no significa que las condiciones de su entorno sean satisfactorias (preferencia)".*
 
 ---
 
 ## 🛠️ Especificaciones Técnicas del Script
-Para resolver este problema, se recomienda ampliamente el uso de herramientas de Inteligencia Artificial (como Gemini o ChatGPT) para asistir en la generación de la estructura del código. El script final debe operar bajo las siguientes fases lógicas:
+Se recomienda ampliamente el uso de herramientas de Inteligencia Artificial (como Gemini o ChatGPT) para asistir en la generación de la estructura sintáctica del código. El programa final debe operar bajo las siguientes fases lógicas:
 
-1. **Fase de Ingesta (Parsing):** El programa debe de leer un archivo plano `.txt` que contenga los tokens codificados en Base64 enviados por el grupo. Debe decodificar cada token de forma segura, convirtiendo la cadena Base64 de vuelta a un objeto JSON legible en Python.
-2. **Fase de Simulación Lineal:** El algoritmo debe iterar progresivamente variando un factor de peso para los estudiantes foráneos (`f = True`) en un rango continuo desde **1.0 hasta 10.0** (con incrementos discretos de 0.1). El peso de los locales se mantendrá estático en 1.0.
-3. **Fase de Optimización Colectiva:** Por cada incremento de peso, el script evaluará todo el espacio de estados de bloques horarios disponibles (Lunes a Viernes, de 08-10 hasta 14-16) calculando el Ratio de Sacrificio ($S$) para hallar cuál es el bloque óptimo.
-4. **Fase de Visualización:** El script debe generar, utilizando librerías de graficación (como `matplotlib` o `seaborn`), una gráfica analítica impecable que relacione el peso del foráneo en el eje $X$ con la puntuación de la métrica juez en el eje $Y$, señalando visualmente el punto crítico de equilibrio o "Peso Ideal".
-
----
-
-## 🧠 Restricciones Obligatorias del Análisis
-La evaluación de la asistencia no puede ser un simple conteo plano. Es **estrictamente obligatorio** que su diseño incorpore el vector de preferencias ideales, denotado en el JSON como **"Quiero" (`v_d`)**, adicionalmente al vector de disponibilidad **"Puedo" (`v_p`)**. El uso de `v_d` les servirá para cuantificar los niveles de "satisfacción vs. insatisfacción" de los estudiantes que van quedando seleccionados en cada iteración.
+1. **Fase de Ingesta (Parsing):** Leer un archivo plano `.txt` con los tokens codificados en Base64. Debe decodificarlos de forma segura, convirtiendo la cadena de vuelta a un objeto JSON legible (diccionario de Python) e incluyendo control de excepciones (`try-except`) para manejar errores de copiado o falta de alineación (*padding*) sin detener el programa.
+2. **Fase de Simulación Lineal:** Iterar progresivamente variando el factor de peso para los estudiantes foráneos (`f = True`) en un rango continuo desde **1.0 hasta 10.0** (con incrementos discretos de 0.1). El peso de los locales se mantendrá estático en 1.0.
+3. **Fase de Optimización Colectiva:** Por cada incremento de peso, evaluar todo el espacio de estados de bloques horarios disponibles (Lunes a Viernes, de 08-10 hasta 14-16) para hallar el bloque que maximice el Bienestar General ($U_{total}$) y calcular el $ISN$ resultante para ese bloque óptimo.
+4. **Fase de Visualización Avanzada:** Generar una gráfica analítica utilizando un **doble eje Y** (`ax.twinx()` en Matplotlib). El eje $X$ representará el peso del foráneo; el eje $Y$ izquierdo mostrará la curva del Bienestar General ($U_{total}$); y el eje $Y$ derecho mostrará de forma discontinua el porcentaje de Satisfacción Neta ($ISN$).
 
 ---
 
@@ -38,16 +38,15 @@ La evaluación de la asistencia no puede ser un simple conteo plano. Es **estric
 Cada estudiante debe cargar en su respectiva subcarpeta asignada dentro del directorio `estudiantes/` los siguientes archivos:
 
 1. **`solucion.py` o `solucion.ipynb`:** El código fuente en Python, debidamente documentado, limpio y libre de errores de ejecución.
-2. **`grafica_consenso.png`:** La imagen exportada directamente por el script donde se visualice claramente el comportamiento de la curva y el peso óptimo detectado.
+2. **`grafica_consenso.png`:** La imagen exportada directamente por el script donde se visualice claramente el comportamiento de ambas curvas, las etiquetas de los bloques horarios dominantes y la línea del peso óptimo detectado.
 3. **`defensa.md`:** Un breve reporte explicativo que responda con rigurosidad científica las siguientes preguntas:
-   * ¿Cuál fue la lógica lógica/algorítmica que usaste para contar los "Excluidos" e "Incluidos" basándote en los vectores `v_p` y `v_d`?
-   * ¿Qué significado físico o social atribuye a la pendiente observada en su gráfica?
-   * Basado en sus datos analizados, ¿cuál es el número exacto de la justicia para esta sección y qué bloque horario representa el consenso óptimo del sistema?
+   * Al ejecutar la simulación con los datos reales de la sección, la curva de Satisfacción Neta ($ISN$) exhibe un comportamiento totalmente estático y plano a lo largo del eje. ¿Qué interpretación sistémica, física o social atribuye a este fenómeno particular?
+   * ¿Por qué el punto crítico de equilibrio o "Número de la Justicia" ($W_i$) se ubica al inicio del espectro en este set de datos y qué bloque horario representa el atractor global del sistema?
 
 ---
 
 ## 🤖 Guía de Orientación para Ingeniería de Prompts (Uso de IA)
-Para desarrollar el código de forma eficiente, no intente escribir toda la sintaxis desde cero si presenta dificultades. Puede estructurar sus instrucciones a la IA dividiendo el problema. 
+No intente escribir toda la lógica algorítmica desde cero si presenta dificultades con la sintaxis. Puede estructurar sus instrucciones a la IA dividiendo el problema en bloques específicos.
 
-**Ejemplo de Prompt Base sugerido para iniciar:**
-> *"Actúa como un científico de datos experto en Python. Necesito que generes un script estructurado que tome una lista de cadenas en Base64, las decodifique usando la librería `base64` y convierta el resultado de bytes a un diccionario JSON usando `json.loads`. Asegúrate de incluir un bloque `try-except` robusto con manejo de excepciones por si alguna cadena de texto llega corrupta o le falta relleno (padding), de modo que el programa avise en consola el error pero continúe procesando los elementos válidos."*
+**Ejemplo de Prompt Base sugerido para la visualización:**
+> *"Actúa como un experto en visualización de datos con Matplotlib en Python. Necesito que generes un fragmento de código para graficar un sistema bivariado compartiendo el mismo eje X (pesos de 1.0 a 10.0). El eje Y izquierdo debe graficar una curva continua de utilidad (valores negativos entre -3 y -13) en color índigo. El eje Y derecho debe graficar una curva discontinua de porcentaje (escala de 0 a 100%) en color naranja. Asegúrate de unificar las leyendas de ambos ejes en una sola caja ubicada en la esquina inferior derecha para que no obstruya las líneas de datos."*
