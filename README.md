@@ -9,7 +9,6 @@ Deben realizar sus entregas **únicamente** dentro de su carpeta designada.
 ## 🚀 Instrucciones para Estudiantes
 1. Clonen este repositorio.
 2. Creen sus scripts `.py` o notebooks dentro de `estudiantes/tu_nombre_apellido/`.
-3. Hagan `git add`, `git commit` y `git push origin main`.
 
 
 ## 📱 ¿Cómo entregar tus asignaciones desde el Celular?
