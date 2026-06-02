@@ -1,36 +1,35 @@
 # defensa.md
 
-1. ¿Por qué la curva de Satisfacción (ISN) se queda completamente plana?
-   
-Al observar la gráfica, la línea punteada naranja del ISN se mantiene horizontal
-en exactamente 42.9 % durante toda la simulación, desde Wf = 1.0 hasta Wf = 1.5.
+## 1. Al correr la simulación, la curva de Satisfacción (ISN) se queda completamente plana. ¿Por qué crees que ocurre esto al analizar los datos reales de tus compañeros?
 
-Esto ocurre porque el bloque ganador es siempre el mismo: Jue_12-14 gana en
-los 11 pasos de la simulación sin excepción. Como el algoritmo nunca cambia de
-bloque, el grupo de estudiantes que puede asistir a ese horario es idéntico en
-cada iteración, y también lo es el subgrupo que además lo tenía como preferencia.
+En el método original con pesos políticos (Wf de 1.0 a 1.5), la curva del ISN
+sí permanecía completamente plana porque el bloque ganador nunca cambiaba a lo
+largo de toda la simulación. Como el algoritmo seleccionaba siempre el mismo
+bloque (`Jue_12-14`), el conjunto de estudiantes que podía asistir era idéntico
+en cada iteración, y por lo tanto el cociente felices/asistentes daba siempre
+el mismo resultado: 42.9%.
 
-Al dividir siempre los mismos números, el ISN produce siempre el mismo porcentaje.
-En otras palabras: la línea plana es evidencia de estabilidad. Con un peso justo
-de máximo 1.5, los foráneos no tienen suficiente influencia para desplazar el
-consenso hacia otro bloque, y por eso la satisfacción no salta ni cae en ningún
-momento de la simulación.
+Sin embargo, ese resultado revela un problema de fondo: el bloque con más
+asistentes no era necesariamente el más satisfactorio. De los 7 que podían ir
+al `Jue_12-14`, solo 3 lo tenían como preferencia real. La curva plana no
+indicaba estabilidad genuina, sino que el algoritmo estaba atrapado en un
+máximo local — un bloque popular por cantidad pero no por calidad.
 
+Por eso se adoptó el método de media geométrica, que evalúa cada bloque con
+la fórmula `score = √(% asistencia × ISN)` y castiga los extremos: ni el
+bloque con muchos asistentes insatisfechos, ni el bloque con pocos asistentes
+felices. Con este método la curva de score ya no es plana sino descendente,
+reflejando un ranking real entre los 20 bloques evaluados.
 
-2. Bloque horario seleccionado como consenso definitivo
+## 2. ¿Cuál es el bloque horario que el algoritmo seleccionó como consenso definitivo?
 
-El algoritmo seleccionó Jue_12-14 — Jueves de 12:00 a 14:00 como el
-consenso definitivo de la sección.
+El algoritmo seleccionó **`Jue_10-12` — Jueves de 10:00 a 12:00** como el
+consenso definitivo de la sección, con un score de **47.14**.
 
-Este bloque obtuvo el Utotal más alto en toda la simulación: −8.00 con
-Wf = 1.0, bajando gradualmente hasta −11.00 con Wf = 1.5. La tendencia
-descendente de la curva índigo se explica porque Roiner Rosario es foráneo y
-no tiene disponibilidad en ningún bloque, por lo que su penalización de −1.5
-se multiplica por Wf y pesa más a medida que el peso foráneo sube — arrastrando
-el Utotal hacia abajo en todos los bloques por igual, sin cambiar cuál es el
-mejor.
-
-A pesar de que el Utotal es negativo en todo el rango, Jue_12-14 es
-consistentemente el menos negativo de los 20 bloques evaluados, lo que lo
-convierte en la opción que minimiza la exclusión y maximiza el bienestar
-colectivo de la sección.
+Este bloque reúne 5 estudiantes que pueden asistir, de los cuales 4 lo tienen
+como su horario preferido, logrando un ISN de 80%. Ningún otro bloque combina
+un número alto de asistentes con un nivel tan elevado de satisfacción al mismo
+tiempo. El bloque `Jue_12-14`, que el método original hubiera elegido, tiene
+más asistentes (7) pero un ISN de apenas 42.9% — más de la mitad va sin
+quererlo. El consenso definitivo no es el horario que más gente tolera, sino
+el que más gente genuinamente quiere.
