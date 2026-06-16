@@ -1,0 +1,9 @@
+a)Al correr la simulación, la curva de Satisfacción (ISN) se queda completamente plana en el tiempo. 
+¿Por qué crees que ocurre esto al analizar los datos reales de tus compañeros?
+
+    Porque toma en cuenta el deseo de todos los estudiantes siempre, a pesar de modificar los puntos de 
+los foraneos su base es encontrar el punto de equilibrio para que todos estén satisfechos 
+
+b)¿Cuál es el bloque horario que el algoritmo seleccionó como el consenso definitivo para la sección?
+
+   Martes 12-14 (Martes de 12:00 m. a 2:00 p. m.)
