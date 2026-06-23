@@ -23,6 +23,7 @@ def evaluar_bloque(bloque, estudiantes, wf):
     pueden, quieren = 0, 0
     for est in estudiantes:
         peso = wf if est.get("f", False) else 1.0
+        # Incluimos 'v' para el caso de Alveris
         lista_p = est.get("v_p", []) + est.get("v", [])
         lista_d = est.get("v_d", [])
         
@@ -57,35 +58,47 @@ def ejecutar_simulacion(estudiantes):
         isn_hist.append(mejor_isn)
     return wf_vals, u_hist, isn_hist
 
-# 4. GRÁFICA (Ajustada según tus instrucciones)
+# 4. GRÁFICA PERSONALIZADA
 def graficar(wf, u, isn):
+    # Encontrar punto óptimo
+    idx_optimo = np.argmax(u)
+    wf_optimo = wf[idx_optimo]
+    u_optimo = u[idx_optimo]
+
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
-    # Eje Izquierdo (Índigo)
-    color_ind = '#4B0082'
-    ax1.set_xlabel('Peso del Estudiante Foráneo ($W_f$)')
-    ax1.set_ylabel('Utilidad', color=color_ind, fontsize=12, fontweight='bold')
-    ax1.plot(wf, u, color=color_ind, linewidth=2, label='Utilidad')
-    ax1.tick_params(axis='y', labelcolor=color_ind)
-    ax1.grid(True, linestyle='--', alpha=0.6)
+    # Eje Izquierdo: U total (Teal)
+    color_teal = '#008080'
+    ax1.set_xlabel('Peso del Estudiante Foráneo ($W_f$)', fontsize=12)
+    ax1.set_ylabel('$U_{total}$', color=color_teal, fontsize=12, fontweight='bold')
+    ax1.plot(wf, u, color=color_teal, linewidth=2.5, label='$U_{total}$')
+    ax1.tick_params(axis='y', labelcolor=color_teal)
+    ax1.grid(True, linestyle='--', alpha=0.5)
 
-    # Eje Derecho (Naranja)
+    # Marcador de punto óptimo
+    ax1.axvline(x=wf_optimo, color='gray', linestyle='--', alpha=0.7)
+    ax1.annotate(f'Óptimo: {wf_optimo:.1f}', 
+                 xy=(wf_optimo, u_optimo), 
+                 xytext=(wf_optimo + 0.5, u_optimo),
+                 arrowprops=dict(facecolor='black', shrink=0.05))
+
+    # Eje Derecho: ISN (DeepPink)
     ax2 = ax1.twinx()
-    color_nar = '#FF8C00'
-    ax2.set_ylabel('Satisfacción (%)', color=color_nar, fontsize=12, fontweight='bold')
-    ax2.plot(wf, isn, color=color_nar, linestyle=':', linewidth=2.5, label='Satisfacción %')
-    ax2.tick_params(axis='y', labelcolor=color_nar)
-    ax2.set_ylim(0, 100)
+    color_pink = '#C71585'
+    ax2.set_ylabel('ISN (%)', color=color_pink, fontsize=12, fontweight='bold')
+    ax2.plot(wf, isn, color=color_pink, linestyle=':', linewidth=2.5, label='ISN (%)')
+    ax2.tick_params(axis='y', labelcolor=color_pink)
+    ax2.set_ylim(0, 105)
 
-    # Leyenda unificada abajo a la derecha
+    # Leyenda unificada
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='lower right')
 
-    plt.title('Simulación de Consenso: Utilidad vs Satisfacción')
+    plt.title('Análisis de Consenso: $U_{total}$ vs ISN (%)', fontsize=14, fontweight='bold')
     plt.tight_layout()
-    plt.savefig('grafica_consenso.png')
-    plt.show()
+    plt.savefig('grafica_consenso.png', dpi=300)
+    print(f"✅ Gráfica generada. Punto óptimo en Wf = {wf_optimo:.1f}")
 
 # EJECUCIÓN
 if __name__ == "__main__":
@@ -93,4 +106,3 @@ if __name__ == "__main__":
     if estudiantes:
         wf, u, isn = ejecutar_simulacion(estudiantes)
         graficar(wf, u, isn)
-        print("Gráfica generada exitosamente.")
