@@ -1,109 +1,104 @@
+# --- CODIGO DE CONSENSO DE HORARIO v3.0 (Tu Estilo - Matriz de Vulnerabilidad) ---
+import ipywidgets as widgets
+from IPython.display import display, HTML
 import base64
 import json
 
-def mostrar_menu_opciones(titulo, opciones):
-    print(f"\n{titulo}")
-    for idx, (texto, _) in enumerate(opciones, start=1):
-        print(f"  {idx}. {texto}")
-    
-    while True:
-        try:
-            seleccion = int(input("👉 Selecciona una opción (número): "))
-            if 1 <= seleccion <= len(opciones):
-                return opciones[seleccion - 1][1]
-            print(f"❌ Por favor, elige un número entre 1 y {len(opciones)}.")
-        except ValueError:
-            print("❌ Entrada inválida. Ingresa un número entero.")
+# Configuración inicial de datos personales y socioeconómicos
+nombre = widgets.Text(placeholder='Tu Nombre y Apellido', description='Nombre:')
 
-def capturar_horarios():
-    dias = ["Lun", "Mar", "Mie", "Jue", "Vie"]
-    bloques = ["08-10", "10-12", "12-14", "14-16"]
-    
-    puedo = []
-    deseo = []
-    
-    print("\n📅 CONFIGURACIÓN DE DISPONIBILIDAD HORARIA")
-    print("Para cada bloque responde con:")
-    print("  'P' si solo PUEDES asistir.")
-    print("  'D' si además lo DESEAS (Tu horario ideal).")
-    print("  Presiona ENTER o cualquier otra tecla si NO PUEDES.")
-    print("-" * 50)
-    
-    for d in dias:
-        print(f"\n--- {d.upper()} ---")
-        for b in bloques:
-            respuesta = input(f"  ¿{b}? [P / D / No]: ").strip().upper()
-            
-            identificador_bloque = f"{d}_{b}"
-            if respuesta == 'P':
-                puedo.append(identificador_bloque)
-            elif respuesta == 'D':
-                puedo.append(identificador_bloque)
-                deseo.append(identificador_bloque)
-                
-    return puedo, deseo
-
-def main():
-    print("🏛️  CONFIGURACION DE HORARIO v3.0 (Optimización Equitativa)")
-    print("Por favor, llena tus datos socio-geográficos primero.")
-    print("=" * 60)
-    
-    # 1. Captura de Nombre
-    nombre = ""
-    while not nombre.strip():
-        nombre = input("👤 Ingresa tu Nombre y Apellido: ").strip()
-        if not nombre:
-            print("❌ El nombre no puede estar vacío.")
-
-    # 2. Opciones de Procedencia
-    opciones_procedencia = [
+procedencia = widgets.Dropdown(
+    options=[
         ('Local (Vive en Maracaibo)', 1.0),
         ('Foráneo Cerca (San Francisco / La Cañada)', 1.2),
         ('Foráneo Medio (Cabimas / Costa Oriental)', 1.5),
         ('Foráneo Lejos (Fuera de la COL / Horas de viaje)', 2.0)
-    ]
-    proc_w = mostrar_menu_opciones("📍 ¿Cuál es tu procedencia geográfica?", opciones_procedencia)
+    ],
+    description='Procedencia:',
+    layout=widgets.Layout(width='450px')
+)
 
-    # 3. Residencia Temporal
-    res_m_input = input("\n🏠 ¿Resides en Maracaibo de Lunes a Viernes? (S/N): ").strip().lower()
-    res_m = res_m_input in ['s', 'si', 'sí', 'y', 'yes']
+residencia_maracaibo = widgets.Checkbox(
+    description='¿Resides en Maracaibo de Lunes a Viernes?',
+    value=False,
+    layout=widgets.Layout(width='450px')
+)
 
-    # 4. Opciones de Logística Local
-    opciones_logistica = [
+logistica_local = widgets.Dropdown(
+    options=[
         ('Transporte propio / Sin complicaciones de traslado', 1.0),
         ('Dependo de transporte público largo o difícil', 1.3),
         ('Tengo horario laboral u obligaciones restrictivas', 1.5)
-    ]
-    socio_w = mostrar_menu_opciones("🚌 ¿Cómo evalúas tu logística o transporte diario?", opciones_logistica)
+    ],
+    description='Logística:',
+    layout=widgets.Layout(width='450px')
+)
 
-    # 5. Captura de la matriz de horarios
-    puedo, deseo = capturar_horarios()
+output = widgets.Output()
 
-    # Validación de seguridad
-    if not puedo:
-        print("\n❌ Error crítico: Debes marcar al menos una disponibilidad ('P' o 'D') para procesar el voto.")
+print("🏛️ CONFIGURACION DE HORARIO v3.0 (Optimización Equitativa)")
+print("Por favor, llena tus datos socio-geográficos primero.")
+print("-" * 60)
+display(nombre, procedencia, residencia_maracaibo, logistica_local)
+print("-" * 60)
+print("Indica los bloques donde PUEDES asistir y marca con DESEO tu horario ideal:")
+
+# Definición de la matriz de horarios
+dias = ["Lun", "Mar", "Mie", "Jue", "Vie"]
+bloques = ["08-10", "10-12", "12-14", "14-16"]
+checks = {}
+
+# Generamos la interfaz de horarios integrada
+for d in dias:
+    print(f"\n--- {d} ---")
+    for b in bloques:
+        # Creamos los dos checkboxes por cada bloque horario
+        c_puedo = widgets.Checkbox(description="Puedo", indent=False)
+        c_deseo = widgets.Checkbox(description="Deseo", indent=False)
+
+        # Los guardamos en el diccionario para recuperarlos luego en la función
+        checks[f"{d}_{b}_puedo"] = c_puedo
+        checks[f"{d}_{b}_deseo"] = c_deseo
+
+        # Mostramos la etiqueta del bloque y los dos checks alineados horizontalmente
+        etiqueta = widgets.Label(value=f"{b}:", layout=widgets.Layout(width='60px'))
+        display(widgets.HBox([etiqueta, c_puedo, c_deseo]))
+
+# Función para compilar los datos y generar el token Base64
+def generar_voto(b):
+    # Recuperamos las listas de lo marcado por el estudiante
+    puedo = [k.replace("_puedo", "") for k, v in checks.items() if "_puedo" in k and v.value]
+    deseo = [k.replace("_deseo", "") for k, v in checks.items() if "_deseo" in k and v.value]
+
+    if not nombre.value or not puedo:
+        with output:
+            output.clear_output()
+            print("❌ Error: Debes poner tu nombre y marcar al menos una disponibilidad (Puedo).")
         return
 
-    # Estructura de datos avanzada compatible con la matriz v3.0
+    # Estructura de datos avanzada que se enviará al script de optimización
     data = {
-        "n": nombre,
-        "proc_w": proc_w,
-        "res_m": res_m,
-        "socio_w": socio_w,
-        "v_p": puedo,
-        "v_d": deseo
+        "n": nombre.value,
+        "proc_w": procedencia.value,         # Multiplicador por distancia geográfica
+        "res_m": residencia_maracaibo.value, # Ponderador si ya alquila en Maracaibo
+        "socio_w": logistica_local.value,    # Multiplicador por dificultad económica/laboral
+        "v_p": puedo,                        # Lista de bloques donde PUEDE
+        "v_d": deseo                         # Lista de bloques donde DESEA
     }
 
     # Codificación segura a Base64
     token = base64.b64encode(json.dumps(data).encode()).decode()
 
-    # Salida final por pantalla
-    print("\n" + "="*65)
-    print("✅ ¡VOTO PERSONALIZADO GENERADO CON ÉXITO!")
-    print("Copia y pega TODO el bloque de texto de abajo en el grupo de WhatsApp:")
-    print("-" * 65)
-    print(token)
-    print("=" * 65)
+    with output:
+        output.clear_output()
+        print("\n✅ ¡VOTO PERSONALIZADO GENERADO CON ÉXITO!")
+        print("Copia y pega TODO este código en el grupo de WhatsApp:")
+        print("-" * 65)
+        print(token)
+        print("-" * 65)
 
-if __name__ == "__main__":
-    main()
+# Botón de acción para procesar el formulario
+print("\n")
+btn = widgets.Button(description="GENERAR CÓDIGO V3.0", button_style='success', layout=widgets.Layout(width='200px'))
+btn.on_click(generar_voto)
+display(btn, output)
