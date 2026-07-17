@@ -1,0 +1,5 @@
+La asignación manual de horarios académicos suele ser un proceso ineficiente que genera deserción, conflicto de intereses y baja asistencia. Para resolver este problema de raíz, hemos diseñado e implementado un modelo de optimización matemática que sustituye la intuición humana por una solución analítica, transparente y libre de sesgos.
+
+Nombre del estudiante: Alveris Edmundo López Lugo
+CI: 32220427
+Carrera: Fisica
