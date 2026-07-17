@@ -1,0 +1,220 @@
+from __future__ import annotations
+
+import base64
+import json
+import logging
+from dataclasses import dataclass
+from typing import Any
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+LOGGER = logging.getLogger(__name__)
+
+DIAS = ["Lun", "Mar", "Mie", "Jue", "Vie"]
+BLOQUES = ["08-10", "10-12", "12-14", "14-16"]
+TODOS_LOS_BLOQUES = [f"{dia}_{bloque}" for dia in DIAS for bloque in BLOQUES]
+
+RANGO_PUNTUALIDAD = np.arange(0.1, 1.01, 0.01)
+
+PUNTAJE_NO_ASISTE = -1.5
+PUNTAJE_PREFERENCIA = 1.5
+PUNTAJE_DISPONIBLE = 1.0
+PENALIZACION_TARDE = 1.0
+
+
+@dataclass(frozen=True)
+class Estudiante:
+    n: str
+    f: bool
+    v_p: list[str]
+    v_d: list[str]
+    v: list[str]
+
+
+@dataclass(frozen=True)
+class ResultadoOptimizacion:
+    pa: float
+    mejor_bloque: str
+    mejor_utotal: float
+    mejor_isn: float
+
+
+def configurar_logging(nivel: int = logging.INFO) -> None:
+    logging.basicConfig(
+        level=nivel,
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    )
+
+
+def decodificar_token(token: str) -> dict[str, Any]:
+    try:
+        decoded = base64.b64decode(token).decode("utf-8")
+        data = json.loads(decoded)
+        if not isinstance(data, dict):
+            raise ValueError("El token no contiene un diccionario JSON.")
+        return data
+    except (ValueError, json.JSONDecodeError, UnicodeDecodeError, base64.binascii.Error) as exc:
+        LOGGER.exception("Error decodificando token.")
+        raise ValueError("Token inválido.") from exc
+
+
+def cargar_estudiantes(tokens_reales: list[str]) -> list[Estudiante]:
+    estudiantes: list[Estudiante] = []
+
+    for token in tokens_reales:
+        try:
+            data = decodificar_token(token)
+            estudiantes.append(
+                Estudiante(
+                    n=str(data.get("n", "")),
+                    f=bool(data.get("f", False)),
+                    v_p=list(data.get("v_p", [])),
+                    v_d=list(data.get("v_d", [])),
+                    v=list(data.get("v", [])),
+                )
+            )
+        except ValueError:
+            LOGGER.warning("Se omitió un token inválido.")
+
+    return estudiantes
+
+
+def es_bloque_tarde(bloque: str) -> bool:
+    return "12-14" in bloque or "14-16" in bloque
+
+
+def evaluar_bloque(estudiantes: list[Estudiante], bloque: str, pa: float) -> tuple[float, float]:
+    u_bloque = 0.0
+    incluidos_que_quieren = 0
+    total_incluidos = 0
+    tarde = es_bloque_tarde(bloque)
+
+    for est in estudiantes:
+        puntos = PUNTAJE_NO_ASISTE
+
+        if bloque in est.v_p:
+            puntos = PUNTAJE_PREFERENCIA
+            incluidos_que_quieren += 1
+            total_incluidos += 1
+        elif bloque in est.v_d or bloque in est.v:
+            puntos = PUNTAJE_DISPONIBLE
+            total_incluidos += 1
+
+        if tarde:
+            puntos -= PENALIZACION_TARDE
+
+        u_bloque += puntos * pa
+
+    isn = (incluidos_que_quieren / total_incluidos * 100) if total_incluidos > 0 else 0.0
+    return u_bloque, isn
+
+
+def buscar_mejor_bloque(estudiantes: list[Estudiante], pa: float) -> ResultadoOptimizacion:
+    mejor_bloque = ""
+    mejor_utotal = float("-inf")
+    mejor_isn = 0.0
+
+    for bloque in TODOS_LOS_BLOQUES:
+        u_bloque, isn = evaluar_bloque(estudiantes, bloque, pa)
+        if u_bloque > mejor_utotal:
+            mejor_utotal = u_bloque
+            mejor_bloque = bloque
+            mejor_isn = isn
+
+    return ResultadoOptimizacion(
+        pa=pa,
+        mejor_bloque=mejor_bloque,
+        mejor_utotal=mejor_utotal,
+        mejor_isn=mejor_isn,
+    )
+
+
+def optimizar_horarios(estudiantes: list[Estudiante]) -> list[ResultadoOptimizacion]:
+    return [buscar_mejor_bloque(estudiantes, float(pa)) for pa in RANGO_PUNTUALIDAD]
+
+
+def graficar_resultados(resultados: list[ResultadoOptimizacion]) -> None:
+    historico_pa = [r.pa for r in resultados]
+    historico_utotal = [r.mejor_utotal for r in resultados]
+    historico_isn = [r.mejor_isn for r in resultados]
+    bloques_ganadores = [r.mejor_bloque for r in resultados]
+
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    color_utotal = "#1f77b4"
+    ax1.set_xlabel("Índice de Puntualidad Académica ($P_a$)", fontsize=12)
+    ax1.set_ylabel("Bienestar Neto Optimizado ($U_{total}$)", color=color_utotal, fontsize=12)
+    linea1, = ax1.plot(
+        historico_pa,
+        historico_utotal,
+        color=color_utotal,
+        linewidth=2,
+        label="Bienestar ($U_{total}$)",
+    )
+    ax1.tick_params(axis="y", labelcolor=color_utotal)
+    ax1.grid(True, linestyle="--", alpha=0.5)
+
+    ax2 = ax1.twinx()
+    color_isn = "#2ca02c"
+    ax2.set_ylabel("Satisfacción Académica Ajustada ($ISN$ %)", color=color_isn, fontsize=12)
+    linea2, = ax2.plot(
+        historico_pa,
+        historico_isn,
+        color=color_isn,
+        linestyle=":",
+        linewidth=2.5,
+        label="Satisfacción ($ISN$)",
+    )
+    ax2.tick_params(axis="y", labelcolor=color_isn)
+    ax2.set_ylim(0, 105)
+
+    ax1.legend([linea1, linea2], [linea1.get_label(), linea2.get_label()],
+               loc="lower right", frameon=True, shadow=True)
+
+    plt.title(
+        "Consenso de Física: Optimización por Puntualidad Académica",
+        fontsize=13,
+        fontweight="bold",
+        pad=15,
+    )
+    fig.tight_layout()
+    plt.savefig("grafica_puntualidad_academica.png", dpi=300, bbox_inches="tight")
+    plt.show()
+
+    print(f"📌 Horario optimizado con Puntualidad Crítica (Pa=0.1): {bloques_ganadores[0]}")
+    print(f"📌 Horario optimizado con Puntualidad Excelente (Pa=1.0): {bloques_ganadores[-1]}")
+
+
+def main() -> None:
+    configurar_logging()
+
+    tokens_reales = [
+        "eyJuIjogIkp1YW4gUGFibG8gUmFtaXJleiIsICJmIjogdHJ1ZSwgInYiOiBbIkx1bl8xNC0xNiIsICJNYXJfMTQtMTYiLCAiTWllXzE0LTE2IiwgIkp1ZV8xNC0xNiIsICJWaWVfMTQtMTYiXX0=",
+        "eyJuIjogIkx1Y2lhbm8gUGFsZW5jaWEgIiwgImYiOiBmYWxzZSwgInZfcCI6IFsiTHVuXzEyLTE0IiwgIkx1bl8xNC0xNiIsICJNYXJfMTYtMTQiLCAiTWFyXzE0LTE2IiwgIkp1ZV8xMi0xNCJdLCAidl9kIjogWyJMdW5fMTAtMTQiLCAiTHVuXzE0LTE2IiwgIk1hcl8wOC0xMCJdfQ==",
+        "eyJuIjogIlNhbWFudGhhIFBhcnJhIiwgImYiOiB0cnVlLCAidl9wIjogWyJMdW5fMTAtMTIiLCAiSnVlXzA4LTEwIl0sICJ2X2QiOiBbIkx1bl8xMC0xMiJdfQ==",
+        "eyJuIjogIkFuZHJcdTAwZTlzIE1lbmRvemEgIiwgImYiOiB0cnVlLCAidl9wIjogWyJNYXJfMTUtMTQiXSwgInZfZCI6IFsiTWFyXzEwLTEyIl19",
+        "eyJuIjogIkVsaWV6ZXIgVmVsYXNxdWV6IiwgImYiOiBmYWxzZSwgInZfcCI6IFsiTHVuXzA4LTEwIiwgIkx1bl8xMC0xMiIsICJMdW5fMTItMTQiLCAiTHVuXzE0LTE2IiwgIk1pZV8wOC0xMCIsICJNaWVfMTAtMTIiLCAiTWllXzEyLTE0IiwgIk1pZV8xNC0xNiIsICJWaWVfMDgtMTAiLCAiVmllXzEwLTEyIiwgIlZpZV8xMi0xNCIsICJWaWVfMTQtMTYiXSwgInZfZCI6IFsiTWFyXzA4LTEwIiwgIk1hcl8xMC0xMiIsICJNYXJfMTItMTQiLCAiTWFyXzE0LTE2IiwgIkp1ZV8wOC0xMCIsICJKdWVfMTAtMTIiLCAiSnVlXzEyLTE0IiwgIkp1ZV8xNC0xNiJdfQ==",
+        "eyJuIjogIllhcmlhbmEgT3JvemNvIiwgImYiOiBmYWxzZSwgInZfcCI6IFsiTHVuXzEyLTE0IiwgIkp1ZV8xMC0xMiJdLCAidl9kIjogWyJMdW5fMTAtMTQiLCAiSnVlXzEyLTE0Il19",
+        "eyJuIjogIkRlbmljZSBWaWxjaGV6ICIsICJmIjogdHJ1ZSwgInZfcCI6IFsiSnVlXzEwLTEyIl0sICJ2X2QiOiBbIkp1ZV8xMC0xMiJdfQ==",
+        "eyJuIjogIkZyYW5jbyBKYWltZXMiLCAiZiI6IGZhbHNlLCAidl9wIjogWyJNYXJfMDgtMTAiLCAiTWFyXzEwLTEyIiwgIk1hcl8xMi0xNCIsICJNYXJfMTQtMTYiLCAiSnVlXzEyLTE0IiwgIlZpZV8wOC0xMCJdLCAidl9kIjogWyJNYXJfMTAtMTIiLCAiTWFyXzEyLTE0IiwgIk1hcl8xNC0xNiIsICJKdWVfMTAtMTQiXX0=",
+        "eyJuIjogIlphcmFoIEFsdmFyYWRvIiwgImYiOiBmYWxzZSwgInZfcCI6IFsiTWllXzE0LTE2IiwgIkp1ZV8xMC0xMiJdLCAidl9kIjogWyJNaWVfMTAtMTYiLCAiSnVlXzEwLTEyIl19",
+        "eyJuIjogIkNlYnJpXHUwMGUxbiBJcmlhcnRlIiwgImYiOiBmYWxzZSwgInZfcCI6IFsiTWFyXzEyLTE0IiwgIk1hcl8xNC0xNiIsICJKdWVfMDgtMTAiLCAiSnVlXzEwLTEyIiwgIlZpZV8wOC0xMCIsICJWaWVfMTAtMTIiLCAiVmllXzEyLTE0IiwgIlZpZV8xNC0xNiJdLCAidl9kIjogWyJNYXJfMTQtMTYiLCAiSnVlXzA4LTEwIiwgIlZpZV8wOC0xMCJdfQ==",
+        "eyJuIjogIlJvaW5lciBSb3NhcmlvICIsICJmIjogdHJ1ZSwgInZfcCI6IFsiTHVuXzEyLTE0IiwgIk1hcl8xMi0xNCJdLCAidl9kIjogW119",
+        "eyJuIjogIk1hdXJvIE1lbGVhbiAiLCAiZiI6IGZhbHNlLCAidl9wIjogWyJNYXJfMDgtMTAiLCAiTWFyXzEwLTEyIiwgIk1pZV8xMC0xMiIsICJNaWVfMTItMTQiXSwgInZfZCI6IFsiTWllXzEwLTEyIiwgIk1pZV8xMi0xNCJdfQ==",
+        "eyJuIjogIkplc1x1MDBmYXMgU3VcdTAwZTFyZXoiLCAiZiI6IGZhbHNlLCAidl9wIjogWyJMdW5fMTAtMTIiLCAiTHVuXzEyLTE0IiwgIk1hcl8wOC0xMCIsICJNYXJfMTAtMTIiLCAiTWFyXzEyLTE0IiwgIk1pZV8xMi0xNCIsICJKdWVfMTAtMTIiLCAiSnVlXzEyLTE0Il0sICJ2X2QiOiBbIkx1bl8xMC0xMiIsICJMdW5fMTAtMTQiLCAiTWFyXzA4LTEwIiwgIk1hcl8xMC0xMiIsICJNYXJfMTAtMTIiLCAiSnVlXzEwLTEyIiwgIkp1ZV8yMi0xNCJdfQ==",
+        "eyJuIjogIkVmcmFpbiBBcnJpZWNoZSIsICJmIjogZmFsc2UsICJ2X3AiOiBbIkx1bl8xMC0xMiIsICJMdW5fMTAtMTQiLCAiTHVuXzE0LTE2IiwgIk1hcl8wOC0xMCIsICJNYXJfMTAtMTIiLCAiTWFyXzEyLTE0IiwgIk1hcl8xNC0xNiIsICJKdWVfMTAtMTIiLCAiSnVlXzEyLTE0IiwgIkp1ZV8xNC0xNiJdLCAidl9kIjogWyJMdW5fMTAtMTIiLCAiSnVlXzEwLTEyIl19",
+        "eyJuIjogIlJlYmVjYSBIZXJuYW5kZXogIiwgImYiOiBmYWxzZSwgInZfcCI6IFsiTWFyXzEyLTE0IiwgIkp1ZV8yMi0xNCJdLCAidl9kIjogWyJNYXJfMDgtMTAiLCAiSnVlXzIyLTE0Il19",
+        "eyJuIjogIkFsdmVyaXMgRWRtdW5kbyBMXHUwMGYzcGV6IGx1Z28gIiwgImYiOiBmYWxzZSwgInYiOiBbIkx1bl8yMi0xNCIsICJNYXJfMTYtMTQiLCAiTWllXzIyLTE0IiwgIkp1ZV8yMi0xNCIsICJWaWVfMTAtMTQiXX0=",
+        "eyJuIjogIkp1YW4gUmFtaXJleiAiLCAiZiI6IGZhbHNlLCAidl9wIjogWyJMdW5fMTAtMTQiLCAiTWFyXzA4LTEwIl0sICJ2X2QiOiBbIk1pZV8yMi0xNCIsICJKdWVfMTAtMTQiLCAiVmllXzIyLTE0Il19",
+        "eyJuIjogIk1pcmFuZGEgTW9udGVybyAiLCAiZiI6IGZhbHNlLCAidl9wIjogWyJNYXJfMTAtMTIiLCAiTWllXzEwLTEyIiwgIkp1ZV8xMC0xMiIsICJWaWVfMTAtMTIiLCAiVmllXzIyLTE0Il0sICJ2X2QiOiBbIk1hcl8xMC0xMiIsICJNYXJfMTItMTQiLCAiTWllXzEwLTEyIiwgIlZpZV8xMC0xMiIsICJWaWVfMTItMTYiXX0=",
+    ]
+
+    estudiantes = cargar_estudiantes(tokens_reales)
+    resultados = optimizar_horarios(estudiantes)
+    graficar_resultados(resultados)
+
+
+if __name__ == "__main__":
+    main()
